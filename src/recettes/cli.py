@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import re
@@ -17,8 +18,8 @@ app = typer.Typer(no_args_is_help=True, help="Build a static recipe website from
 INGREDIENT_RE = re.compile(r"\{\{\s*(.*?)\s*\}\}")
 QUANTITY_RE = re.compile(
     r"^(?P<amount>\d+(?:[.,]\d+)?(?:\s*/\s*\d+(?:[.,]\d+)?)?)"
-    r"\s*(?P<unit>c\.?\s*à\.?\s*[sc]\.?|cas|cac|tablespoons?|tbsp|teaspoons?|tsp|cups?|"
-    r"ounces?|oz|pounds?|lbs?|kg|mg|g|ml|cl|l)?\s*(?P<name>.*)$",
+    r"\s*(?P<unit>(?:c\.?\s*à\.?\s*[sc]\.?|cas|cac|tablespoons?|tbsp|teaspoons?|tsp|cups?|"
+    r"ounces?|oz|pounds?|lbs?|kg|mg|g|ml|cl|l)(?![^\W\d_]))?\s*(?P<name>.*)$",
     re.IGNORECASE,
 )
 TOKEN_RE = re.compile(r"RECIPEINGREDIENTTOKEN(\d+)END")
@@ -338,8 +339,12 @@ def build(source: Path, destination: Path, title: str = "Recettes") -> int:
     templates = package_dir / "templates"
     assets = destination / "assets"
     assets.mkdir(parents=True, exist_ok=True)
+    # Content hashes appended to asset URLs, so browsers never use stale cached copies.
+    versions = {}
     for filename in ("style.css", "app.js", "recipe.js"):
         shutil.copyfile(static / filename, assets / filename)
+        digest = hashlib.sha256((static / filename).read_bytes()).hexdigest()[:10]
+        versions[filename.replace(".", "_") + "_version"] = digest
     image_dir = assets / "images"
     recipes_dir = destination / "recipes"
     recipes_dir.mkdir(parents=True, exist_ok=True)
@@ -357,6 +362,7 @@ def build(source: Path, destination: Path, title: str = "Recettes") -> int:
             templates / "recipe.html",
             title=html.escape(str(recipe["title"])),
             lang=html.escape(str(recipe["lang"]), quote=True),
+            **versions,
             **recipe_html_parts(recipe),
         )
         (recipes_dir / f"{slug}.html").write_text(page, encoding="utf-8")
@@ -364,15 +370,18 @@ def build(source: Path, destination: Path, title: str = "Recettes") -> int:
         f'<link rel="prefetch" href="recipes/{quote(str(recipe["slug"]), safe="-_")}.html">'
         for recipe in recipes
     )
+    index_data = recipe_index_data(recipes)
+    versions["recipes_json_version"] = hashlib.sha256(index_data.encode()).hexdigest()[:10]
     languages = {str(recipe["lang"]) for recipe in recipes if recipe["lang"]}
     index = render_template(
         templates / "index.html",
         title=html.escape(title),
         lang=html.escape(next(iter(languages)) if len(languages) == 1 else "", quote=True),
         prefetch_links=prefetch_links,
+        **versions,
     )
     (destination / "index.html").write_text(index, encoding="utf-8")
-    (destination / "recipes.json").write_text(recipe_index_data(recipes), encoding="utf-8")
+    (destination / "recipes.json").write_text(index_data, encoding="utf-8")
     return len(recipes)
 
 

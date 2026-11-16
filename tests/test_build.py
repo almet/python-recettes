@@ -1,4 +1,6 @@
+import hashlib
 import json
+import re
 from pathlib import Path
 
 from recettes.cli import aggregate_ingredients, build, parse_quantity
@@ -8,6 +10,8 @@ def test_parse_quantity_and_guessed_count_unit() -> None:
     assert parse_quantity("50g de beurre") == (50.0, "g", "de beurre")
     assert parse_quantity("1cas d'huile") == (1.0, "cas", "d'huile")
     assert parse_quantity("1/2 cac") == (0.5, "cac", "")
+    assert parse_quantity("3 gousses d'ail") == (3.0, "", "gousses d'ail")
+    assert parse_quantity("2 louches de bouillon") == (2.0, "", "louches de bouillon")
     assert parse_quantity("0.5cac") == (0.5, "cac", "")
     assert parse_quantity("4 oignons") == (4.0, "", "oignons")
     assert parse_quantity("comté râpé") == (None, "", "comté râpé")
@@ -120,3 +124,29 @@ def test_local_markdown_recipe_links_resolve_to_recipe_pages(tmp_path: Path) -> 
 
     recipe = (output / "recipes" / "flan-coco.html").read_text(encoding="utf-8")
     assert recipe.count('href="../recipes/caramel.html"') == 2
+
+
+def test_asset_urls_are_versioned_with_content_hash(tmp_path: Path) -> None:
+    source = tmp_path / "recipes"
+    source.mkdir()
+    (source / "simple.md").write_text("Just a recipe.\n", encoding="utf-8")
+    output = tmp_path / "site"
+
+    build(source, output)
+
+    def version(filename: str) -> str:
+        content = (output / "assets" / filename).read_bytes()
+        return hashlib.sha256(content).hexdigest()[:10]
+
+    index = (output / "index.html").read_text(encoding="utf-8")
+    recipe = (output / "recipes" / "simple.html").read_text(encoding="utf-8")
+    assert f'href="assets/style.css?v={version("style.css")}"' in index
+    assert f'src="assets/app.js?v={version("app.js")}"' in index
+    assert f'href="../assets/style.css?v={version("style.css")}"' in recipe
+    assert f'src="../assets/recipe.js?v={version("recipe.js")}"' in recipe
+    data_version = hashlib.sha256((output / "recipes.json").read_bytes()).hexdigest()[:10]
+    assert (
+        f'<link rel="preload" id="recipes-data" href="recipes.json?v={data_version}" '
+        'as="fetch" crossorigin>'
+    ) in index
+    assert not re.search(r"\{\{ \w+ \}\}", index + recipe)

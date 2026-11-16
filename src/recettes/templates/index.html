@@ -4,9 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/style.css?v={{ style_css_version }}">
+    <link rel="preload" id="recipes-data" href="recipes.json?v={{ recipes_json_version }}" as="fetch" crossorigin>
     {{ prefetch_links }}
-    <script type="module" src="assets/app.js"></script>
+    <script type="module" src="assets/app.js?v={{ app_js_version }}"></script>
   </head>
   <body>
     <main class="recipe-index">
