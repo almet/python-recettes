@@ -150,3 +150,38 @@ def test_asset_urls_are_versioned_with_content_hash(tmp_path: Path) -> None:
         'as="fetch" crossorigin>'
     ) in index
     assert not re.search(r"\{\{ \w+ \}\}", index + recipe)
+
+
+def build_one(tmp_path: Path, markdown: str) -> str:
+    source = tmp_path / "recipes"
+    source.mkdir()
+    (source / "recipe.md").write_text(markdown, encoding="utf-8")
+    build(source, tmp_path / "site")
+    page = (tmp_path / "site" / "recipes" / "recipe.html").read_text(encoding="utf-8")
+    return re.search(r'<div class="recipe-schema">(.*)</div>\n', page).group(1)
+
+
+def test_diagram_nests_each_step_around_the_one_before(tmp_path: Path) -> None:
+    diagram = build_one(
+        tmp_path,
+        "From grandma.\n\n# Preparation\n\n"
+        "1. Cream {{ 100g butter }} with {{ 200g of sugar }}.\n"
+        "2. Beat in {{ 2 eggs }}.\n"
+        "3. Bake for 30min.\n",
+    )
+
+    texts = re.findall(r">([^<]+)<", diagram)
+    assert texts == [
+        "100 g butter",
+        "200 g of sugar",
+        "Cream",
+        "2 eggs",
+        "Beat in",
+        "Bake for 30min",
+    ]
+    assert diagram.startswith('<div class="schema-step"><div class="schema-inputs">' * 3)
+    assert 'data-amount="100.0" data-unit="g" data-name="butter"' in diagram
+
+
+def test_recipe_without_ingredient_markers_has_no_diagram(tmp_path: Path) -> None:
+    assert build_one(tmp_path, "1. Mix flour and water.\n2. Bake.\n") == ""

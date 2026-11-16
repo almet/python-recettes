@@ -106,6 +106,27 @@ def markdown_with_ingredients(markdown: str) -> tuple[str, list[dict[str, object
     return rendered, ingredients
 
 
+def recipe_diagram(markdown: str) -> str:
+    """Generate the recipe diagram.
+    Steps are in between the step before it and the ingredients it uses."""
+    diagram = ""
+    tokens = MARKDOWN.parse(markdown)
+    for token, inline in zip(tokens, tokens[1:]):
+        if token.type != "paragraph_open":
+            continue
+        for raw in INGREDIENT_RE.findall(inline.content):
+            amount, unit, name = parse_quantity(raw)
+            ingredient = {"amount": amount, "unit": unit, "name": name, "raw": raw}
+            diagram += ingredient_html(ingredient, "div")
+        if diagram:
+            label = html.escape(inline.content.split("{{")[0].strip(" ,;:."))
+            diagram = (
+                f'<div class="schema-step"><div class="schema-inputs">{diagram}</div>'
+                f'<div class="schema-label">{label}</div></div>'
+            )
+    return diagram
+
+
 def first_paragraph(markdown: str, limit: int = 180) -> str:
     tokens = MARKDOWN.parse(markdown)
     for index, token in enumerate(tokens):
@@ -217,6 +238,7 @@ def recipe_page(path: Path, image_dir: Path, recipe_slugs: dict[Path, str]) -> d
         "ingredients": ingredients,
         "ingredient_list": aggregate_ingredients(ingredients),
         "content": content,
+        "schema": recipe_diagram(document.content),
         "images": [image.name for image in images],
     }
 
@@ -288,6 +310,7 @@ def recipe_html_parts(recipe: dict[str, object]) -> dict[str, str]:
             ingredient_html(item, "li") for item in recipe["ingredient_list"]
         ),
         "gallery": gallery,
+        "schema": str(recipe["schema"]),
         # Last: inserted recipe content must not be scanned for other placeholders.
         "content": insert_ingredients(str(recipe["content"]), recipe["ingredients"]),
     }
