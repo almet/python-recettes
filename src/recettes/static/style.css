@@ -388,10 +388,11 @@ input {
 }
 
 .recipe-schema {
-  width: fit-content;
-  max-width: 100%;
+  width: max-content;
+  max-width: calc(100vw - 36px);
   overflow-x: auto;
-  margin: 0 auto 24px;
+  margin: 0 0 24px 50%;
+  transform: translateX(-50%);
   border: 2px solid var(--accent);
 }
 
