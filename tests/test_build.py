@@ -152,11 +152,11 @@ def test_asset_urls_are_versioned_with_content_hash(tmp_path: Path) -> None:
     assert not re.search(r"\{\{ \w+ \}\}", index + recipe)
 
 
-def build_one(tmp_path: Path, markdown: str) -> str:
+def build_one(tmp_path: Path, markdown: str, diagrams: bool = True) -> str:
     source = tmp_path / "recipes"
-    source.mkdir()
+    source.mkdir(exist_ok=True)
     (source / "recipe.md").write_text(markdown, encoding="utf-8")
-    build(source, tmp_path / "site")
+    build(source, tmp_path / "site", diagrams=diagrams)
     page = (tmp_path / "site" / "recipes" / "recipe.html").read_text(encoding="utf-8")
     return re.search(r'<div class="recipe-schema">(.*)</div>\n', page).group(1)
 
@@ -185,3 +185,12 @@ def test_diagram_nests_each_step_around_the_one_before(tmp_path: Path) -> None:
 
 def test_recipe_without_ingredient_markers_has_no_diagram(tmp_path: Path) -> None:
     assert build_one(tmp_path, "1. Mix flour and water.\n2. Bake.\n") == ""
+
+
+def test_diagrams_follow_the_flag_unless_the_recipe_says_otherwise(tmp_path: Path) -> None:
+    step = "Mix {{ 100g flour }}.\n"
+
+    assert build_one(tmp_path, step, diagrams=False) == ""
+    assert build_one(tmp_path, "---\ndiagram: true\n---\n" + step, diagrams=False) != ""
+    assert build_one(tmp_path, "---\ndiagram: false\n---\n" + step) == ""
+    assert "diagram</dt>" not in (tmp_path / "site/recipes/recipe.html").read_text("utf-8")
