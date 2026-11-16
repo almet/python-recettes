@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="{{ lang }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="assets/style.css">
+    {{ prefetch_links }}
+    <script type="module" src="assets/app.js"></script>
+  </head>
+  <body>
+    <main class="recipe-index">
+      <h1>{{ title }}</h1>
+      <label class="search-box">
+        <span aria-hidden="true">⌕</span>
+        <input id="recipe-search" type="search" aria-label="Search recipes" autocomplete="off">
+      </label>
+      <div class="tag-cloud" id="tag-cloud"></div>
+      <div class="recipe-grid" id="recipe-grid"></div>
+    </main>
+    <footer class="site-footer">
+      Built with
+      <a href="https://github.com/leplatrem/python-recettes">Recettes</a>, the free software
+      that turns Markdown files into a recipes website.
+    </footer>
+
+    <template id="tag-cloud-item-template">
+      <button class="tag-cloud-item" type="button" aria-pressed="false">
+        <span data-tag-name></span>
+        <span data-tag-count></span>
+      </button>
+    </template>
+
+    <template id="recipe-card-template">
+      <article class="recipe-card">
+        <a>
+          <h2 data-recipe-title></h2>
+          <p class="card-excerpt" data-recipe-excerpt></p>
+          <div class="recipe-tags" data-recipe-tags></div>
+          <span class="card-arrow" aria-hidden="true">↗</span>
+        </a>
+      </article>
+    </template>
+
+    <template id="recipe-tag-template">
+      <span class="tag" data-tag-label></span>
+    </template>
+  </body>
+</html>

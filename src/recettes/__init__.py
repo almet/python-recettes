@@ -1,0 +1,1 @@
+"""Static recipe website generator."""
