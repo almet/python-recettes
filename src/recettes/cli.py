@@ -112,6 +112,8 @@ def recipe_diagram(markdown: str) -> str:
     diagram = ""
     tokens = MARKDOWN.parse(markdown)
     for token, inline in zip(tokens, tokens[1:]):
+        if token.type == "heading_open" and token.tag == "h1" and diagram:
+            break
         if token.type != "paragraph_open":
             continue
         for raw in INGREDIENT_RE.findall(inline.content):

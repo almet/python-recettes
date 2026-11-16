@@ -183,6 +183,19 @@ def test_diagram_nests_each_step_around_the_one_before(tmp_path: Path) -> None:
     assert 'data-amount="100.0" data-unit="g" data-name="butter"' in diagram
 
 
+def test_diagram_stops_at_the_section_after_the_steps(tmp_path: Path) -> None:
+    diagram = build_one(
+        tmp_path,
+        "# Preparation\n\n"
+        "## Step 1\n\nMix {{ 100g flour }}.\n\n"
+        "## Step 2\n\nBake.\n\n"
+        "# Notes\n\nTry it with {{ 50g of raspberries }}.\n\n- Less sugar\n",
+    )
+
+    texts = re.findall(r">([^<]+)<", diagram)
+    assert texts == ["100 g flour", "Mix", "Bake"]
+
+
 def test_recipe_without_ingredient_markers_has_no_diagram(tmp_path: Path) -> None:
     assert build_one(tmp_path, "1. Mix flour and water.\n2. Bake.\n") == ""
 
